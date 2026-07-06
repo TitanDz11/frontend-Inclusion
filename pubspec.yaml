@@ -29,6 +29,12 @@ dependencies:
   url_launcher: ^6.2.4
   image_picker: ^1.2.3
   google_mlkit_text_recognition: ^0.15.1
+  speech_to_text: ^7.4.0
+  shared_preferences: ^2.5.5
+  geolocator: ^14.0.3
+  flutter_localizations:
+    sdk: flutter
+  mask_text_input_formatter: ^2.9.0
 
 dev_dependencies:
   flutter_test:

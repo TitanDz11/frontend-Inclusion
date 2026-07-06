@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Provider for accessibility settings (font scale, high contrast, toggles).
 class AccessibilityProvider extends ChangeNotifier {
@@ -12,6 +13,9 @@ class AccessibilityProvider extends ChangeNotifier {
   bool _autoReadAloud = false;
   bool _signLanguage = false;
 
+  String? _emergencyName;
+  String? _emergencyPhone;
+
   double get fontScale => _fontScale;
   double get contrast => _contrast;
   double get readingSpeed => _readingSpeed;
@@ -19,13 +23,40 @@ class AccessibilityProvider extends ChangeNotifier {
   bool get hapticVibration => _hapticVibration;
   bool get autoReadAloud => _autoReadAloud;
   bool get signLanguage => _signLanguage;
+  String? get emergencyName => _emergencyName;
+  String? get emergencyPhone => _emergencyPhone;
 
   AccessibilityProvider() {
-    _initTts();
+    _init();
   }
 
-  Future<void> _initTts() async {
+  Future<void> _init() async {
     await _tts.setLanguage("es-ES");
+    await _loadPrefs();
+  }
+
+  Future<void> _loadPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _emergencyName = prefs.getString('emergencyName');
+      _emergencyPhone = prefs.getString('emergencyPhone');
+      notifyListeners();
+    } catch (e) {
+      // Ignored
+    }
+  }
+
+  Future<void> saveEmergencyContact(String name, String phone) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('emergencyName', name);
+      await prefs.setString('emergencyPhone', phone);
+      _emergencyName = name;
+      _emergencyPhone = phone;
+      notifyListeners();
+    } catch (e) {
+      // Ignored
+    }
   }
 
   void speak(String text) async {

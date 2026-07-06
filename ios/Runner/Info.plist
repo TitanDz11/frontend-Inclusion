@@ -70,5 +70,16 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Esta aplicación requiere acceso al micrófono para que puedas dictar los nombres de los documentos que deseas guardar.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Esta aplicación utiliza reconocimiento de voz para convertir tu voz en texto al nombrar los documentos.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Esta aplicación requiere su ubicación para enviarla a su contacto de emergencia en caso de S.O.S.</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>tel</string>
+		<string>sms</string>
+	</array>
 </dict>
 </plist>

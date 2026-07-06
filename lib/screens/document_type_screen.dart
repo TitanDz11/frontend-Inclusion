@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:isar/isar.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_card.dart';
 import '../widgets/app_bottom_nav.dart';
@@ -8,42 +9,59 @@ import 'reader_screen.dart';
 import 'settings_screen.dart';
 import 'package:provider/provider.dart';
 import '../services/accessibility_provider.dart';
+import '../services/database_service.dart';
+import '../models/document.dart';
 
-class DocumentTypeScreen extends StatelessWidget {
+class DocumentTypeScreen extends StatefulWidget {
   const DocumentTypeScreen({super.key});
 
-  static const List<_DocItem> _preloadedDocs = [
-    _DocItem(
-      'DNI (RNP)',
-      Icons.badge_rounded,
-      'Registro Nacional de las Personas.\nDocumento Nacional de Identidad.\nNúmero: 0801-1990-12345.\nNombre: Juan Pérez García.\nFecha de nacimiento: 15 de marzo de 1990.\nLugar de nacimiento: Tegucigalpa, Francisco Morazán.\nEstado Civil: Soltero.',
-    ),
-    _DocItem(
-      'Bienes Inmuebles',
-      Icons.home_rounded,
-      'Alcaldía Municipal.\nRecibo por pago de bienes inmuebles.\nClave catastral: 0801-0001-0002-0003.\nPropietario: Juan Pérez García.\nDirección: Colonia Kennedy, Bloque 5, Casa 12.\nTotal a pagar: L. 1,500.00.\nFecha de vencimiento: 31 de agosto de 2026.',
-    ),
-    _DocItem(
-      'Servicio de Agua',
-      Icons.water_drop_rounded,
-      'Servicio Autónomo Nacional de Acueductos y Alcantarillados (SANAA).\nFactura de consumo de agua potable.\nCliente: Juan Pérez García.\nMes facturado: Junio 2026.\nLectura anterior: 1542 m3. Lectura actual: 1560 m3.\nTotal a pagar: L. 350.00.\nFecha límite de pago: 15 de julio de 2026.',
-    ),
-    _DocItem(
-      'Recibo de Luz',
-      Icons.bolt_rounded,
-      'Empresa Nacional de Energía Eléctrica (ENEE).\nFactura de consumo eléctrico.\nCódigo de cliente: 987654321.\nMes facturado: Junio 2026.\nConsumo: 250 kWh.\nTotal a pagar: L. 1,250.00.\nPor favor pague antes del 20 de julio de 2026 para evitar recargos.',
-    ),
-  ];
+  @override
+  State<DocumentTypeScreen> createState() => _DocumentTypeScreenState();
+}
+
+class _DocumentTypeScreenState extends State<DocumentTypeScreen> {
+  List<_DocItem> _allDocs = [];
+
+
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDocs();
+  }
+
+  Future<void> _loadDocs() async {
+    try {
+      final isar = DatabaseService.instance;
+      final savedDocs = await isar.collection<Document>().where().findAll();
+      
+      final mappedDocs = savedDocs.map((doc) => _DocItem(
+        doc.id,
+        doc.name,
+        Icons.description_rounded,
+        doc.extractedText ?? '',
+      )).toList();
+
+      if (mounted) {
+        setState(() {
+          _allDocs = mappedDocs;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _allDocs = [];
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.backgroundBase,
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false,
         title: Text('Tipo de Documento', style: AppTheme.bodyLargeStyle),
       ),
       body: SingleChildScrollView(
@@ -56,7 +74,7 @@ class DocumentTypeScreen extends StatelessWidget {
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const ScannerScreen()),
-              ),
+              ).then((_) => _loadDocs()), // Refresh docs when returning
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.all(AppTheme.spacingMD),
                 shape: RoundedRectangleBorder(
@@ -100,15 +118,19 @@ class DocumentTypeScreen extends StatelessWidget {
               style: AppTheme.captionStyle.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: AppTheme.spacingMD),
-            // 2x2 Grid
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              mainAxisSpacing: AppTheme.spacingMD,
-              crossAxisSpacing: AppTheme.spacingMD,
-              children: _preloadedDocs.map((doc) => _buildDocCard(context, doc)).toList(),
-            ),
+            _allDocs.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.only(top: AppTheme.spacingMD),
+                    child: Text('Aún no tienes documentos guardados.', style: TextStyle(color: AppTheme.textSecondary)),
+                  )
+                : GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    mainAxisSpacing: AppTheme.spacingMD,
+                    crossAxisSpacing: AppTheme.spacingMD,
+                    children: _allDocs.map((doc) => _buildDocCard(context, doc)).toList(),
+                  ),
           ],
         ),
       ),
@@ -123,7 +145,7 @@ class DocumentTypeScreen extends StatelessWidget {
     return AppCard(
       onTap: () {
         // Navigate to document reader
-        Navigator.push(context, MaterialPageRoute(builder: (_) => ReaderScreen(scannedText: doc.content)));
+        Navigator.push(context, MaterialPageRoute(builder: (_) => ReaderScreen(scannedText: doc.content, documentId: doc.id))).then((_) => _loadDocs());
       },
       onLongPress: () {
         context.read<AccessibilityProvider>().speak(doc.name);
@@ -145,6 +167,8 @@ class DocumentTypeScreen extends StatelessWidget {
           Text(
             doc.name,
             textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: AppTheme.bodyStyle.copyWith(fontSize: 14, fontWeight: FontWeight.w600),
           ),
         ],
@@ -169,8 +193,9 @@ class DocumentTypeScreen extends StatelessWidget {
 }
 
 class _DocItem {
+  final int id;
   final String name;
   final IconData icon;
   final String content;
-  const _DocItem(this.name, this.icon, this.content);
+  const _DocItem(this.id, this.name, this.icon, this.content);
 }

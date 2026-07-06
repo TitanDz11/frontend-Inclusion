@@ -13,6 +13,17 @@ import 'sos_emergency_screen.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      return 'Buenos días';
+    } else if (hour < 19) {
+      return 'Buenas tardes';
+    } else {
+      return 'Buenas noches';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -36,7 +47,7 @@ class HomeScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: AppTheme.spacingXS),
                         Text(
-                          'Buenos días,\n¿en qué te ayudamos?',
+                          '${_getGreeting()},\n¿en qué te ayudamos?',
                           style: AppTheme.headingStyle,
                         ),
                       ],

@@ -5,11 +5,41 @@ import '../services/accessibility_provider.dart';
 import '../widgets/app_card.dart';
 import '../widgets/app_bottom_nav.dart';
 import 'package:flutter/services.dart';
+import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'home_screen.dart';
 import 'document_type_screen.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  late TextEditingController _nameController;
+  late TextEditingController _phoneController;
+
+  final _phoneMask = MaskTextInputFormatter(
+    mask: '+504 ####-####',
+    filter: { "#": RegExp(r'[0-9]') },
+    type: MaskAutoCompletionType.lazy,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    final a11y = Provider.of<AccessibilityProvider>(context, listen: false);
+    _nameController = TextEditingController(text: a11y.emergencyName ?? '');
+    _phoneController = TextEditingController(text: a11y.emergencyPhone ?? '');
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,10 +48,7 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppTheme.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false,
         title: Text(
           'Configuración de accesibilidad',
           style: AppTheme.headingStyle.copyWith(fontSize: 20),
@@ -106,15 +133,6 @@ class SettingsScreen extends StatelessWidget {
                       ),
                       const Divider(height: 32),
                       _buildToggleRow(
-                        icon: Icons.dark_mode_rounded,
-                        title: 'Modo oscuro',
-                        subtitle: 'Reduce el brillo de pantalla',
-                        value: a11y.darkMode,
-                        hapticsEnabled: a11y.hapticVibration,
-                        onChanged: (val) => a11y.toggleDarkMode(val),
-                      ),
-                      const Divider(height: 32),
-                      _buildToggleRow(
                         icon: Icons.vibration_rounded,
                         title: 'Vibración háptica',
                         subtitle: 'Retroalimentación táctil en acciones',
@@ -124,21 +142,70 @@ class SettingsScreen extends StatelessWidget {
                       ),
                       const Divider(height: 32),
                       _buildToggleRow(
-                        icon: Icons.record_voice_over_rounded,
-                        title: 'Lectura en voz alta',
-                        subtitle: 'Narración automática al abrir textos',
-                        value: a11y.autoReadAloud,
-                        hapticsEnabled: a11y.hapticVibration,
-                        onChanged: (val) => a11y.toggleAutoReadAloud(val),
-                      ),
-                      const Divider(height: 32),
-                      _buildToggleRow(
                         icon: Icons.sign_language_rounded,
                         title: 'Traducción simultánea',
                         subtitle: 'Español / Lengua de señas',
                         value: a11y.signLanguage,
                         hapticsEnabled: a11y.hapticVibration,
                         onChanged: (val) => a11y.toggleSignLanguage(val),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppTheme.spacingXL),
+                // EMERGENCIA SECTION
+                Text(
+                  'Contacto de Emergencia S.O.S',
+                  style: AppTheme.captionStyle.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: AppTheme.spacingMD),
+                AppCard(
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: _nameController,
+                        decoration: InputDecoration(
+                          labelText: 'Nombre del contacto',
+                          prefixIcon: const Icon(Icons.person_rounded),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                      const SizedBox(height: AppTheme.spacingMD),
+                      TextField(
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
+                        inputFormatters: [_phoneMask],
+                        decoration: InputDecoration(
+                          labelText: 'Número de teléfono',
+                          hintText: '+504 0000-0000',
+                          prefixIcon: const Icon(Icons.phone_rounded),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                      const SizedBox(height: AppTheme.spacingMD),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            a11y.saveEmergencyContact(_nameController.text, _phoneController.text);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Contacto guardado correctamente')),
+                            );
+                            FocusScope.of(context).unfocus();
+                          },
+                          icon: const Icon(Icons.save_rounded, color: Colors.white),
+                          label: const Text('Guardar Contacto', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.accentPrimary,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -250,7 +317,7 @@ class SettingsScreen extends StatelessWidget {
             value: value,
             onChanged: (val) {
               if (hapticsEnabled) {
-                HapticFeedback.lightImpact();
+                HapticFeedback.vibrate();
               }
               onChanged(val);
             },

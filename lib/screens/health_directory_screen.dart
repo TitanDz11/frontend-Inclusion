@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_card.dart';
 import '../widgets/app_bottom_nav.dart';
@@ -132,17 +133,27 @@ class HealthDirectoryScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppTheme.accentPrimary,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  'Llamar',
-                  style: AppTheme.captionStyle.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
+              InkWell(
+                onTap: () async {
+                  final cleanPhone = contact.phone.replaceAll(RegExp(r'[^\d+]'), '');
+                  final url = Uri.parse('tel:$cleanPhone');
+                  if (await canLaunchUrl(url)) {
+                    await launchUrl(url);
+                  }
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentPrimary,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'Llamar',
+                    style: AppTheme.captionStyle.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),

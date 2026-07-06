@@ -46,7 +46,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => ReaderScreen(scannedText: extractedText)),
+        MaterialPageRoute(builder: (_) => ReaderScreen(scannedText: extractedText, imagePath: image.path)),
       );
     } catch (e) {
       if (!mounted) return;

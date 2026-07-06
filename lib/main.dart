@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'theme/app_theme.dart';
 import 'services/accessibility_provider.dart';
+import 'services/database_service.dart';
 import 'screens/home_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await DatabaseService.initialize();
 
   runApp(
     MultiProvider(
@@ -36,6 +39,14 @@ class InclusionApp extends StatelessWidget {
           title: 'Inclusion Atlantida',
           debugShowCheckedModeBanner: false,
           theme: theme,
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: const [
+            Locale('es', 'ES'),
+          ],
           builder: (context, child) {
             final fontScale = context.select<AccessibilityProvider, double>((a) => a.fontScale);
             final contrast = context.select<AccessibilityProvider, double>((a) => a.contrast);

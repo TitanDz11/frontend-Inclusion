@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
+import '../services/accessibility_provider.dart';
 
 class SOSEmergencyScreen extends StatefulWidget {
   const SOSEmergencyScreen({super.key});
@@ -57,19 +61,7 @@ class _SOSEmergencyScreenState extends State<SOSEmergencyScreen> with SingleTick
             children: [
               // SOS Button
               GestureDetector(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Alerta S.O.S enviada a sus contactos.',
-                        style: AppTheme.bodyStyle.copyWith(color: Colors.white),
-                      ),
-                      backgroundColor: Colors.red.shade700,
-                      behavior: SnackBarBehavior.floating,
-                      margin: const EdgeInsets.all(AppTheme.spacingLG),
-                    ),
-                  );
-                },
+                onTap: _handleSOS,
                 child: RepaintBoundary(
                   child: ScaleTransition(
                     scale: _scaleAnimation,
@@ -117,5 +109,100 @@ class _SOSEmergencyScreenState extends State<SOSEmergencyScreen> with SingleTick
         ),
       ),
     );
+  }
+
+  Future<void> _handleSOS() async {
+    final a11y = Provider.of<AccessibilityProvider>(context, listen: false);
+    final phone = a11y.emergencyPhone;
+    final name = a11y.emergencyName ?? 'Contacto de Emergencia';
+
+    if (phone == null || phone.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No hay un contacto de emergencia registrado. Configúrelo en Ajustes.')),
+      );
+      return;
+    }
+
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Los servicios de ubicación están deshabilitados.')));
+      return;
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Permiso de ubicación denegado.')));
+        return;
+      }
+    }
+    
+    if (permission == LocationPermission.deniedForever) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Permisos de ubicación denegados permanentemente.')));
+      return;
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Obteniendo ubicación...')));
+
+    try {
+      Position position = await Geolocator.getCurrentPosition();
+      final mapLink = 'https://maps.google.com/?q=${position.latitude},${position.longitude}';
+      
+      if (!mounted) return;
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: AppTheme.backgroundBase,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (context) {
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(AppTheme.spacingLG),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Opciones de Emergencia', style: AppTheme.subheadingStyle),
+                  const SizedBox(height: AppTheme.spacingMD),
+                  ListTile(
+                    leading: const Icon(Icons.phone, color: AppTheme.accentPrimary),
+                    title: Text('Llamar a $name'),
+                    onTap: () async {
+                      Navigator.pop(context);
+                      final url = Uri.parse('tel:$phone');
+                      if (await canLaunchUrl(url)) {
+                        await launchUrl(url);
+                      }
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.message, color: AppTheme.accentPrimary),
+                    title: const Text('Enviar SMS con ubicación'),
+                    onTap: () async {
+                      Navigator.pop(context);
+                      final url = Uri.parse('sms:$phone?body=¡Ayuda! Esta es mi ubicación: $mapLink');
+                      if (await canLaunchUrl(url)) {
+                        await launchUrl(url);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error al obtener la ubicación.')));
+    }
   }
 }
